@@ -1,0 +1,23 @@
+* Each server can accommodate four (3.5") hard drives and three optical (5.25") drives
+  * W1: currently 4*(500 GB) drives in the hard drive bays, and 2*(4 TB) drives in the optical bays (each occupying one bay, using a 3.5->5.25 bracket)
+    * Incidentally, each bracket can instead accommodate two 2.5" drives (such as SSDs) mounted side-by-side, screwed in from the top
+  * W2: currently 4*(500 GB) drives in the hard drive bays
+
+* If more drives necessary: can buy a drive housing that will accommodate five hard drives in three 5.25" bays
+  * See these products:
+    * http://www.newegg.ca/Product/Product.aspx?Item=N82E16817994155
+    * http://www.newegg.ca/Product/Product.aspx?Item=N82E16817994028
+* When installing drives into the 5.25" bays, you need extra rails
+  * Some extra rails should be *inside* the W2 case, hanging off the side of the optical bays -- should be easily visible when you open the case
+* Two sets of rails are in the giant case/motherboard box underneath the desk between Dave and Brian
+
+* Only two SATA ports on each motherboard
+  * On W1: both SATA ports used for 4 TB drives
+  * On W2: one SATA port used for optical drive, one SATA port free
+* Also have two SAS ports, one of which is free in each system -- can buy a mini SAS to 4X SATA fanout cable (I think) to hook up more drives
+* W1 doesn't have an optical drive any longer -- I pulled it to fit in the second hard drive, as we only have the two SATA ports and I didn't have a SAS-to-SATA cable
+* If hooking up more drives, may need more SATA power connectors -- in the giant case/motherboard box underneath the desk between Dave and Brian, there's a SATA data cable and a molex-to-2x-SATA-power cable
+
+* See photos in photos/ directory for inside of W1
+  * Note sticker on front of two 4 TB drives shows drive's serial number
+  * For example, the device /dev/disk/by-id/ata-ST4000DM000-1F2168_S300FLR7 corresponds to the drive with serial number S300FLR7

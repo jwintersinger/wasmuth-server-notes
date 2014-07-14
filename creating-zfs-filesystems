@@ -1,0 +1,44 @@
+===============================
+Creating ZFS pool & filesystems
+===============================
+# Set ARC size (see software-notes for more details)
+# Make permanent
+echo 'options zfs zfs_arc_max=4294967296' > /etc/modprobe.d/zfs.conf
+# Setting to use until next boot
+echo 4294967296 > /sys/module/zfs/parameters/zfs_arc_max
+
+# Specify -f to override "does not contain an EFI label but it may
+contain partition" error
+zpool create -f -o ashift=12 -O atime=off -O compression=lz4 banana
+mirror /dev/disk/by-id/{ata-ST4000DM000-1F2168_S300FLR7,ata-ST4000DM000-1F2168_S300HGK5}
+
+# Create descendant filesystem.
+zfs create -o mountpoint=/home.new banana/home
+
+# Use parent filesystem only to establish properties for descendants. Don't
+# allow it to be mounted.
+zfs set canmount=off banana
+
+# Limit filesystem to 90% capacity. Performance degrades at >80% utilization.
+# Note that if the filesystem becomes full, it may become impossible to delete
+# files with ZFS. The canonical solution is to run "echo > /some/large/file" to
+# truncate an existing large file and free up enough space to permit deletions.
+zfs set quota=3.21T banana/home
+
+# Set up automatic scrub by running "crontab -e" and adding this line. Note
+# that full path to /sbin/zpool is required.
+32 04 * * 6 /sbin/zpool scrub banana
+
+====================
+Worthwhile resources
+====================
+http://arstechnica.com/information-technology/2014/02/ars-walkthrough-using-the-zfs-next-gen-filesystem-on-linux/2/
+http://wiki.gentoo.org/wiki/ZFS
+https://wiki.archlinux.org/index.php/ZFS
+http://wiki.complete.org/ConvertingToZFS
+https://github.com/zfsonlinux/pkg-zfs/wiki/HOWTO-install-Ubuntu-to-a-Native-ZFS-Root-Filesystem/d54167f961dc0a01c49189f9e9a1a94c89fc3457
+http://www.solarisinternals.com/wiki/index.php/ZFS_Best_Practices_Guide
+https://pthree.org/2013/01/02/zfs-administration-part-xvi-getting-and-setting-properties/
+http://docs.oracle.com/cd/E23823_01/html/819-5461/setup-1.html#scrolltoc
+https://www.freebsd.org/doc/handbook/filesystems-zfs.html
+http://serverfault.com/questions/254013/file-size-with-zfs-compression

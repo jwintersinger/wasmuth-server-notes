@@ -1,0 +1,59 @@
+==============================================================
+Recovering failed hard drive in Linux software RAID (md) array
+==============================================================
+* To replace a drive in the root array, do this:
+  mdadm /dev/md0 --fail /dev/sdf1
+  mdadm /dev/md1 --fail /dev/sdf2
+  mdadm /dev/md0 --remove /dev/sdf1
+  mdadm /dev/md1 --remove /dev/sdf2
+
+  # Power down the system and replace the drive. Run "ls -l /dev/disk/by-id" to
+  # figure out the serial number of the drive that failed (e.g., which serial
+  # number corresponds to /dev/sdf). For example,
+  # /dev/disk/by-id/ata-ST4000DM000-1F2168_S300HG8F corresponds to one of the 4
+  # TB disks (hence the model "ST4000DM000") with serial number "S300HG8F". The
+  # serial number is printed on the front of the drive -- you don't need to
+  # remove the drives to check it. You do, however, need to remove the front
+  # plastic panel on the case, as well as the metal cage covering the drives,
+  # to see the fronts of the drives.
+
+  # Power on the system.
+  # Copy partition table
+  sfdisk -d /dev/sde | sfdisk /dev/sdf
+  # Install bootloader (which should be on all drives, so you can boot from any)
+  grub-install /dev/sdf && update-grub
+  # Add new drive to array.
+  mdadm /dev/md0 --add /dev/sdf1
+  mdadm /dev/md1 --add /dev/sdf2
+
+  # Monitor rebuild process.
+  mdadm --detail /dev/md0
+  mdadm --detail /dev/md1
+
+=========================================
+Recovering failed hard drive in ZFS array
+=========================================
+* To replace a drive in the ZFS array, do this:
+  # Use disk GUID noted from running "zdb". Using the GUID lets you take a disk
+  # offline and replace it even if you've already removed it from the system
+  # (or the drive is dead and no longer has a /dev entry), as per
+  # http://askubuntu.com/a/305981.
+  zpool offline banana 18351370981040380042
+
+  # Power down the system and replace the drive. See my note above about
+  # figuring out the serial number of the drive that failed.
+
+  # Power on the system.
+  # Add new drive to array. See note above about figuring out the serial number of the
+  # proper drive to pull.
+  zpool replace banana 18351370981040380042 /dev/disk/by-id/<new-disk>
+
+  # "-o ashift=12" may not be needed -- I see differing information depending
+  # on source. Regardless, I include it to ensure consistency with the ashift
+  # vaulue used when the array was built, which is critical.
+  # "-f" is needed to overcome "does not contain an EFI label but it may
+  # contain partition" error
+  zpool replace -o ashift=12 -f banana 18351370981040380042 /dev/disk/by-id/ata-ST4000DM000-1F2168_S300HG8F
+
+  # Monitor rebuild ("resilver") process.
+  zpool status

@@ -1,0 +1,84 @@
+================
+Managing ZFS ARC
+================
+* The ZFS ARC controls how much memory ZFS uses to cache recently read/written
+  files. Note this is separate from the general filesystem cache used by the
+  kernel. Relative to the generic filesystem cache, the ZFS ARC seems to be
+  much less accommodating about releasing memory to memory-hungry jobs, and so
+  limiting its size is a good idea. While I initially started with a value
+  setting it to 1/2 of RAM (16 GB), I now limit it to 4 GB.
+
+# Get ARC size (in bytes)
+grep c_max /proc/spl/kstat/zfs/arcstats
+
+# Set ARC size (in bytes) -- 4294967296 = 4 GB
+echo 4294967296 > /sys/module/zfs/parameters/zfs_arc_max
+
+===================
+Useful ZFS commands
+===================
+zpool status
+zfs list
+zfs get all banana/home
+# Check compression ratio (value of 2x == files taking half the physical space
+# they would if uncompressed)
+zfs get compressratio banana/home
+
+# Read current ARC setting. Ars Technica asuggests setting this to 1/2 of RAM,
+# but I find it consumes too much memory. I prefer 4 GB. Set via
+# /etc/modprobe.d/zfs.conf to make permanent.
+grep c_max /proc/spl/kstat/zfs/arcstats
+
+======================
+Monitoring disk health
+======================
+# Pay attention to attributes like Reallocated_Sector_Ct and Offline_Uncorrectable, as well as any SMART errors logged
+smartctl -a /dev/sda
+
+# If you're in doubt concerning a disk's viability, run "smartctl -t long <device>" on it, then check the log later
+
+=======================
+Monitoring array health
+=======================
+Linux software RAID (md):
+  mdadm --detail /dev/md{0,1}
+ZFS (only on W1):
+  zpool status
+
+* Also watch the output of "dmesg" for disk-related errors
+  * This, for example, is an unrecoverable disk error, suggesting the drive should immediately be replaced.
+      [1003597.098802] ata2.00: exception Emask 0x0 SAct 0x3ff SErr 0x0 action 0x0
+      [1003597.098810] ata2.00: irq_stat 0x40000008
+      [1003597.098815] ata2.00: failed command: READ FPDMA QUEUED
+      [1003597.098824] ata2.00: cmd 60/00:20:80:76:c0/01:00:87:00:00/40 tag 4 ncq 131072 in
+      [1003597.098824]          res 41/40:00:e0:76:c0/00:01:87:00:00/00 Emask 0x409 (media error) <F>
+      [1003597.098828] ata2.00: status: { DRDY ERR }
+      [1003597.098831] ata2.00: error: { UNC }
+      [1003597.100270] ata2.00: configured for UDMA/133
+      [1003597.100305] sd 2:0:0:0: [sdc] Unhandled sense code
+      [1003597.100309] sd 2:0:0:0: [sdc]  
+      [1003597.100312] Result: hostbyte=DID_OK driverbyte=DRIVER_SENSE
+      [1003597.100315] sd 2:0:0:0: [sdc]  
+      [1003597.100318] Sense Key : Medium Error [current] [descriptor]
+      [1003597.100324] Descriptor sense data with sense descriptors (in hex):
+      [1003597.100326]         72 03 11 04 00 00 00 0c 00 0a 80 00 00 00 00 00 
+      [1003597.100341]         87 c0 76 e0 
+      [1003597.100347] sd 2:0:0:0: [sdc]  
+      [1003597.100351] Add. Sense: Unrecovered read error - auto reallocate failed
+      [1003597.100355] sd 2:0:0:0: [sdc] CDB: 
+      [1003597.100357] Read(16): 88 00 00 00 00 00 87 c0 76 80 00 00 01 00 00 00
+      [1003597.100374] end_request: I/O error, dev sdc, sector 2277537504
+      [1003597.100401] ata2: EH complete
+
+=============
+Configuration
+=============
+* The root filesystem is a RAID 10 array consisting of four 500 GB disks
+  * Traditionally, RAID 10 (aka RAID 1+0) is a stripe of mirrors -- i.e., a RAID 0 consisting of two RAID 1 arrays, each of which is (in our case) two physical disks
+    * However, the Linux software RAID (named MD) implements a special RAID 10 mode that combines these for you and eases administrative overhead, which we use, so you don't see the underlying RAID 1 arrays as separate devices
+
+* W1 and W2 have *two* separate RAID 10 arrays set up
+  * /dev/md0 is a 10 GB swap partition
+  * /dev/md1 is a 990 GB / partition (for everything but swap)
+  * Then, on W1, /home is on a ZFS array
+    * On W2, /home is under the root filesystem
